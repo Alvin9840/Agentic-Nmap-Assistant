@@ -1,0 +1,16 @@
+# Copy to policy.yaml for local use. policy.yaml is ignored by git.
+allowed_targets:
+  - "127.0.0.1"
+
+profiles:
+  web-check:
+    allowed_ports: [8080]
+    service_detection: false
+  service-check:
+    allowed_ports: [8080]
+    service_detection: true
+
+limits:
+  timeout_seconds: 60
+  max_ports_per_request: 4
+  max_concurrent_scans: 1

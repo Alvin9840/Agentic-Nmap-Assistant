@@ -218,3 +218,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local configuration, credentials, and generated experiment output
+.env
+config/policy.yaml
+results/*
+!results/.gitkeep
+!results/README.md
+evaluation/output/
