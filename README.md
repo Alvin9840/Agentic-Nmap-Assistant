@@ -150,7 +150,7 @@ agentic-nmap-assistant/
 ├── config/policy.example.yaml
 ├── src/safe_nmap/
 │   ├── shared/schemas.py
-│   ├── agent/ (cli, planner, mcp_client, prompts)
+│   ├── agent/ (cli, planner fallback, llm_planner, mcp_client, prompts)
 │   └── server/ (mcp_server, policy_guard, command_builder, scanner, parser,
 │                reporter, audit)
 ├── lab/ (docker-compose.yml, README.md)
