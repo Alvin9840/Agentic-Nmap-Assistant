@@ -1,6 +1,6 @@
 # V1 Project Progress Checklist
 
-Last reviewed: 2026-11-02
+Last reviewed: 2026-11-04
 
 ## Status Legend
 
@@ -30,7 +30,8 @@ Last reviewed: 2026-11-02
 - [x] Implement the pipeline that passes text through a planner and then calls the MCP client.
 - [x] Implement CLI planner modes: `auto`, `llm`, and `deterministic`.
 - [x] In `auto` mode, fall back only when the LLM planner is unavailable; planning ambiguity remains an error.
-- [ ] Confirm the MCP server launch command with B and verify it matches the CLI's stdio parameters.
+- [x] Add the MCP v2 stdio server entry point at the module path launched by the CLI.
+- [x] Expose `scan_network` with shared request validation and a structured `ScanResponse` contract.
 - [ ] Run the agent and client through the completed MCP server.
 - [ ] Add planner/client/pipeline acceptance cases for C to implement and run.
 
@@ -39,13 +40,15 @@ Last reviewed: 2026-11-02
 - [x] Add an example policy configuration file.
 - [ ] Implement and validate server-controlled policy configuration loading.
 - [ ] Implement the independent server-side policy guard.
-- [ ] Implement the fixed Nmap command builder from validated plans.
-- [ ] Implement the Nmap executor, timeout handling, and process-start reporting.
-- [ ] Implement Nmap XML parsing and structured findings.
+- [x] Implement the fixed Nmap command builder from validated plans (not yet test-verified).
+- [x] Implement the Nmap executor, timeout handling, and process-start reporting (not yet test-verified).
+- [x] Implement Nmap XML parsing and structured findings (not yet test-verified).
+- [x] Implement server workflow error classification and `ScanResponse` construction (not yet test-verified).
 - [ ] Implement deterministic report generation.
 - [ ] Implement JSONL audit logging.
-- [ ] Implement the MCP v2 server and its `scan_network` tool.
-- [ ] Add the server module entry point expected by the CLI.
+- [x] Implement the MCP v2 server shell, `scan_network` tool interface, and injectable scan-handler boundary.
+- [x] Wire the MCP tool to the server pipeline.
+- [ ] Enable complete scan requests after policy authorization rules are implemented.
 - [ ] Ensure denied requests never invoke the executor.
 
 ## C — Testing and Evaluation
@@ -63,4 +66,4 @@ Last reviewed: 2026-11-02
 
 ## Current Integration Blocker
 
-The CLI launches `safe_nmap.server.mcp_server` over stdio, but the server module is still a placeholder. The CLI cannot complete a scan until B implements the MCP server entry point and the `scan_network` tool. The current planner, client, and CLI code has not yet been verified by tests or an end-to-end run.
+The CLI can launch `safe_nmap.server.mcp_server` over stdio, discover `scan_network`, and route calls into the server pipeline. The policy guard currently fails closed because its authorization rules are not implemented. The pipeline and scanner have not yet been verified by tests or an end-to-end run.
