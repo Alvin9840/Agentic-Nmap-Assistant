@@ -717,43 +717,38 @@ Results are reproducible and every reported number can be traced to logs.
 
 ## 18. Three Work Packages
 
-### Package A: Agent and MCP
+### Package A: Completed Implementation
 
-Own:
+Implemented so far:
 
-- CLI.
-- Planner.
-- LLM integration.
-- MCP client/server interface.
+- CLI, deterministic planner, LLM planner, and prompts.
+- Agent pipeline and MCP client.
+- MCP server tool interface and server pipeline.
+- Initial command builder, Nmap executor, and XML parser.
 
-Initial development:
-Use mocked tool responses.
+These implementations still need the tests and integration verification owned by C.
 
-### Package B: Policy and Scan Core
+### Package B: Remaining Non-Test Work
 
-Own:
+Own the remaining implementation and documentation work:
 
-- Policy configuration.
-- Guard.
-- Command builder.
-- Executor.
-- Parser and reporter.
+- Load and validate the server-controlled policy configuration.
+- Implement the independent policy guard and authorized `ValidatedPlan` creation.
+- Ensure denied requests cannot reach the Nmap executor.
+- Review and integrate the existing command builder, scanner, parser, and server pipeline with policy.
+- Implement deterministic reports and JSONL audit logging.
+- Finalize the approved/decoy Docker Compose lab and its setup and ground-truth documentation.
 
-Initial development:
-Use structured requests directly.
+### Package C: Tests and Evaluation
 
-### Package C: Testbed and Evaluation
+Own verification and experimental work:
 
-Own:
-
-- Docker lab.
-- Test specification.
-- Evaluation harness.
-- Baselines.
-- Metrics, CSV outputs, and figures.
-
-Initial development:
-Build ground truth and manual baseline.
+- Unit, integration, and end-to-end tests for agent, policy, MCP, and scan components.
+- Start and validate the approved/decoy Docker lab; verify denied requests never invoke the executor.
+- Verify setup from a clean environment.
+- Finalize evaluation cases and expected outcomes.
+- Implement C1–C4 comparison and latency workflows.
+- Run tests and experiments; export reproducible raw data, summaries, and figures.
 
 All contributors must agree on schemas and audit fields before parallel work.
 
