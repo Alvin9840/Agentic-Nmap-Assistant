@@ -34,6 +34,9 @@ where = ["src"]
 testpaths = ["tests"]
 addopts = "-ra"
 asyncio_mode = "auto"
+markers = [
+    "lab: requires nmap and the Docker lab (lab/docker-compose.yml) to be running; skipped otherwise.",
+]
 
 [tool.ruff]
 line-length = 100
