@@ -2,13 +2,6 @@
 
 ## Project Status (read this first)
 
-Current work lives on `feature/m1b-lab-and-metrics`, built on top of six
-earlier feature branches (`feature/m1-lab-baseline` →
-`feature/m2-policy-guard-m5-unit-tests` → `feature/m4-end-to-end` →
-`feature/m5-more-integration-tests` → `feature/m5-planner-tests` →
-`feature/m6-evaluation` → `feature/m1b-lab-and-metrics`), 9 commits ahead of
-`main`.
-
 ### Architecture
 
 ```text
