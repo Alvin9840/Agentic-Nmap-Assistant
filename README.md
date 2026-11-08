@@ -7,8 +7,7 @@ earlier feature branches (`feature/m1-lab-baseline` →
 `feature/m2-policy-guard-m5-unit-tests` → `feature/m4-end-to-end` →
 `feature/m5-more-integration-tests` → `feature/m5-planner-tests` →
 `feature/m6-evaluation` → `feature/m1b-lab-and-metrics`), 9 commits ahead of
-`main`. **None of this has been pushed to `origin` or merged yet** — see
-"Not done yet" below before you start building on `main`.
+`main`.
 
 ### Architecture
 
