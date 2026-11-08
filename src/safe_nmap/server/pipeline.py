@@ -5,8 +5,40 @@ from __future__ import annotations
 import time
 from uuid import uuid4
 
-from safe_nmap.server import command_builder, parser, policy_guard, scanner
+from safe_nmap.server import command_builder, parser, policy_config, policy_guard, scanner
 from safe_nmap.shared.schemas import ScanRequest, ScanResponse
+
+
+class _ConcurrencyLimiter:
+    """Non-blocking counting limiter for in-flight scans.
+
+    Checking and incrementing the counter happens with no ``await`` in
+    between, so this is atomic under cooperative asyncio scheduling without
+    needing a separate lock.
+    """
+
+    def __init__(self, max_concurrent: int) -> None:
+        self.max_concurrent = max_concurrent
+        self._current = 0
+
+    def try_acquire(self) -> bool:
+        if self._current >= self.max_concurrent:
+            return False
+        self._current += 1
+        return True
+
+    def release(self) -> None:
+        self._current = max(0, self._current - 1)
+
+
+_concurrency_limiter: _ConcurrencyLimiter | None = None
+
+
+def _get_concurrency_limiter(max_concurrent: int) -> _ConcurrencyLimiter:
+    global _concurrency_limiter
+    if _concurrency_limiter is None or _concurrency_limiter.max_concurrent != max_concurrent:
+        _concurrency_limiter = _ConcurrencyLimiter(max_concurrent)
+    return _concurrency_limiter
 
 
 async def run_scan(request: ScanRequest) -> ScanResponse:
@@ -31,8 +63,41 @@ async def run_scan(request: ScanRequest) -> ScanResponse:
         )
 
     policy_ms = _elapsed_ms(policy_started_at)
-    arguments = command_builder.build_nmap_command(plan)
-    execution = await scanner.run_nmap(arguments, plan.timeout_seconds)
+
+    try:
+        max_concurrent_scans = policy_config.get_policy().limits.max_concurrent_scans
+    except policy_config.PolicyConfigError as exc:
+        return ScanResponse(
+            request_id=request_id,
+            status="rejected",
+            allowed=False,
+            nmap_started=False,
+            reason=f"Policy configuration is unavailable: {exc}",
+            target=request.target,
+            resolved_ip=plan.resolved_ip,
+            policy_ms=policy_ms,
+            server_total_ms=_elapsed_ms(request_started_at),
+        )
+
+    limiter = _get_concurrency_limiter(max_concurrent_scans)
+    if not limiter.try_acquire():
+        return ScanResponse(
+            request_id=request_id,
+            status="rejected",
+            allowed=False,
+            nmap_started=False,
+            reason="too many concurrent scans",
+            target=request.target,
+            resolved_ip=plan.resolved_ip,
+            policy_ms=policy_ms,
+            server_total_ms=_elapsed_ms(request_started_at),
+        )
+
+    try:
+        arguments = command_builder.build_nmap_command(plan)
+        execution = await scanner.run_nmap(arguments, plan.timeout_seconds)
+    finally:
+        limiter.release()
 
     response_fields = {
         "request_id": request_id,

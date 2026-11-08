@@ -36,11 +36,27 @@ def create_server(scan_handler: ScanHandler | None = None) -> MCPServer:
     )
 
     @server.tool(name=TOOL_NAME)
-    async def scan_network(target: str, ports: list[int], profile: str) -> ScanResponse:
-        """Request an Nmap scan; the server independently checks its policy first."""
+    async def scan_network(
+        target: str,
+        ports: list[int],
+        profile: str,
+        client_request_id: str | None = None,
+        experiment_condition: str | None = None,
+    ) -> ScanResponse:
+        """Request an Nmap scan; the server independently checks its policy first.
+
+        ``client_request_id`` and ``experiment_condition`` are logging/experiment
+        metadata only; the policy guard never uses them for authorization.
+        """
         try:
             request = ScanRequest.model_validate(
-                {"target": target, "ports": ports, "profile": profile}
+                {
+                    "target": target,
+                    "ports": ports,
+                    "profile": profile,
+                    "client_request_id": client_request_id,
+                    "experiment_condition": experiment_condition,
+                }
             )
         except ValidationError as exc:
             # The SDK normally validates the generated input schema too. Keep
