@@ -100,13 +100,19 @@ def _warn_fallback(reason: Exception) -> None:
     )
 
 
-def create_server_parameters() -> StdioServerParameters:
-    """Build fixed stdio launch parameters for the project MCP server."""
+def create_server_parameters(env: dict[str, str] | None = None) -> StdioServerParameters:
+    """Build fixed stdio launch parameters for the project MCP server.
+
+    ``env`` is merged over the SDK's safe-listed inherited variables; it lets
+    callers (notably tests) point the spawned server at a specific policy or
+    audit log path via ``SAFE_NMAP_POLICY`` / ``SAFE_NMAP_AUDIT_LOG``.
+    """
     project_root = Path(__file__).resolve().parents[3]
     return StdioServerParameters(
         command=sys.executable,
         args=["-m", "safe_nmap.server.mcp_server"],
         cwd=project_root,
+        env=env,
     )
 
 
@@ -131,11 +137,11 @@ def _write_planner_audit_event(context: _PlannerContext) -> None:
 
 
 async def run_cli_request(
-    request_text: str, planner_mode: str
+    request_text: str, planner_mode: str, server_env: dict[str, str] | None = None
 ) -> tuple[ScanResponse, _PlannerContext]:
     context = _PlannerContext(planner_mode)
     planner = choose_planner(planner_mode, context)
-    mcp_client = MCPClient(create_server_parameters())
+    mcp_client = MCPClient(create_server_parameters(env=server_env))
     response = await run_scan(request_text, planner, mcp_client)
     _write_planner_audit_event(context)
     return response, context
