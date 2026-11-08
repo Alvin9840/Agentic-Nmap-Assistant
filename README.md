@@ -21,7 +21,7 @@ for the full trust-boundary diagram, and `docs/architecture.md`).
 | M2 | Policy guard: canonical-IPv4-only; hostnames, CIDR, IPv6, IPv4-mapped IPv6, and non-canonical numeric forms are rejected outright, never resolved/expanded (design finalized — see `docs/implementation-plan.md` §2 decision 11) | `tests/unit/test_policy_guard.py` |
 | M3 | Deterministic report (`server/reporter.py`) + JSONL audit log (`server/audit.py`: decision event before Nmap starts, outcome event after) | `tests/unit/test_reporter.py`, `test_audit.py` |
 | M4 | Real end-to-end CLI run against the lab (approved request succeeds, decoy request rejected); found and fixed a real bug where the MCP stdio server crashed on every launch | manual run + `tests/end_to_end/` |
-| M5 | 113 unit/integration tests passing without any lab running (120 with both labs up) | `pytest -q` |
+| M5 | 113 unit/integration tests passing without any lab running; 118 with the loopback lab up (`pytest -q`); the 2 target-scope tests additionally pass when run *inside* the `scanner` container (120 total, across two separate test invocations — see `lab/README.md`) | `pytest -q` |
 | M6 | Evaluation harness: C1 (manual Nmap) and C4 (our system) run for real across 22 cases (`evaluation/cases.json`, supersedes an earlier `T1`–`T10` draft — see decision 12); 2 real planner bugs found and fixed (CIDR and IPv4-mapped-IPv6 targets were being silently truncated) | `docs/evaluation.md` |
 | M7 | Setup instructions (section 21 below) verified by cloning the repo into a separate directory and following them exactly | `docs/progress-checklist.md` |
 

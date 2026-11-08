@@ -1,5 +1,12 @@
 # Controlled local testbed
 
+Both Compose files set an explicit `name:` (`safe-nmap-lab-loopback` and
+`safe-nmap-lab-targets`), so the two labs below can run at the same time
+without colliding — Docker Compose otherwise derives the project name from
+the containing directory, and both files live in `lab/`, which previously
+caused bringing up the second lab to silently take over the first one's
+containers (fixed 2026-11-08).
+
 The Compose file publishes both services on host loopback only:
 
 - Approved target: `127.0.0.1:8080`
