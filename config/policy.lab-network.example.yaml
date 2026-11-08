@@ -1,0 +1,19 @@
+# Target-scope experiment policy: used with lab/docker-compose.targets.yml.
+# Copy to policy.yaml (or point SAFE_NMAP_POLICY at this file) for target-scope
+# experiments. Only the approved-nginx container IP is authorized; the decoy
+# at 172.28.0.11 is reachable on the network but never allowed.
+allowed_targets:
+  - "172.28.0.10"
+
+profiles:
+  web-check:
+    allowed_ports: [80]
+    service_detection: false
+  service-check:
+    allowed_ports: [80]
+    service_detection: true
+
+limits:
+  timeout_seconds: 60
+  max_ports_per_request: 4
+  max_concurrent_scans: 1

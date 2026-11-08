@@ -19,8 +19,12 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0,<9.0",
+    "pytest-asyncio>=0.24,<1.0",
     "pytest-cov>=5.0,<7.0",
     "ruff>=0.5,<1.0",
+]
+eval = [
+    "matplotlib>=3.8,<4.0",
 ]
 
 [project.scripts]
@@ -32,6 +36,10 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+asyncio_mode = "auto"
+markers = [
+    "lab: requires nmap and the Docker lab (lab/docker-compose.yml) to be running; skipped otherwise.",
+]
 
 [tool.ruff]
 line-length = 100

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
 import time
-from dataclasses import dataclass
 from collections.abc import Sequence
+from dataclasses import dataclass
+from functools import lru_cache
 
 
 @dataclass(frozen=True)
@@ -18,6 +20,12 @@ class ScanExecution:
     scan_ms: float
 
 
+@lru_cache(maxsize=1)
+def _resolve_nmap_executable() -> str | None:
+    """Resolve the trusted Nmap executable path once and cache the result."""
+    return shutil.which("nmap")
+
+
 async def run_nmap(arguments: Sequence[str], timeout_seconds: int) -> ScanExecution:
     """Run Nmap without a shell, enforce a timeout, and capture its output."""
     if not arguments or not arguments[0]:
@@ -26,9 +34,19 @@ async def run_nmap(arguments: Sequence[str], timeout_seconds: int) -> ScanExecut
         raise ValueError("timeout_seconds must be greater than zero.")
 
     started_at = time.perf_counter()
+    executable_path = _resolve_nmap_executable()
+    if executable_path is None:
+        return ScanExecution(
+            nmap_started=False,
+            xml_output=None,
+            error_message="Nmap executable was not found on PATH.",
+            scan_ms=_elapsed_ms(started_at),
+        )
+
     try:
         process = await asyncio.create_subprocess_exec(
-            *arguments,
+            executable_path,
+            *arguments[1:],
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )

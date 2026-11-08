@@ -5,7 +5,7 @@ from safe_nmap.shared.schemas import ValidatedPlan
 
 def build_nmap_command(plan: ValidatedPlan) -> list[str]:
     """Build the supported TCP scan command from a server-created plan."""
-    arguments = ["nmap", "-n", "-sT", "-oX", "-"]
+    arguments = ["nmap", "-n", "-sT", "-T3", "-oX", "-"]
     if plan.service_detection:
         arguments.append("-sV")
 
