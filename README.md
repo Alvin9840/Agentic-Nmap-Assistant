@@ -783,3 +783,87 @@ First return:
 6. Tests to run for the first milestone.
 
 Then proceed with the smallest useful change.
+
+## 21. Setup and Usage
+
+Verified 2026-11-08 on macOS (Python 3.11, nmap 7.993, Docker Desktop) and by
+cloning the repository into a separate directory and repeating these exact
+steps with no other local state; not verified on Windows or Linux.
+
+### Prerequisites
+
+- Python 3.11 or later.
+- `nmap` on `PATH` (e.g. `brew install nmap` on macOS, `apt-get install nmap`
+  on Debian/Ubuntu).
+- Docker (for the local lab).
+
+### 1. Install the project
+
+With `uv`:
+
+```sh
+uv sync --extra dev --extra eval
+```
+
+Without `uv` (plain `venv` + `pip`):
+
+```sh
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -e ".[dev,eval]"
+```
+
+### 2. Create the local policy file
+
+```sh
+cp config/policy.example.yaml config/policy.yaml
+```
+
+`config/policy.yaml` is git-ignored and required at runtime; every request is
+rejected (fail closed) without it. Override its path with `SAFE_NMAP_POLICY`.
+
+### 3. Start the local lab (required for a real scan)
+
+```sh
+docker compose -f lab/docker-compose.yml up -d
+curl 127.0.0.1:8080   # approved service
+curl 127.0.0.1:8081   # decoy service, forbidden by config/policy.example.yaml
+docker compose -f lab/docker-compose.yml down   # when done
+```
+
+### 4. Run the CLI
+
+```sh
+safe-nmap --planner deterministic --request "profile web-check port 8080 target 127.0.0.1"
+safe-nmap --planner deterministic --request "profile web-check port 8080 target 127.0.0.1" --json
+```
+
+To use `--planner llm` or `--planner auto`, copy `.env.example` to `.env` and
+set `OPENAI_API_KEY`/`OPENAI_MODEL` first; without them the LLM planner
+reports an explicit unavailability error rather than silently falling back
+(except in `auto` mode, which falls back to the deterministic planner).
+
+### 5. Run tests
+
+```sh
+pytest -q                 # unit tests + integration tests that need no lab
+pytest -q -m lab          # also requires nmap on PATH and the lab running
+ruff check .
+```
+
+### 6. Run the evaluation scripts
+
+```sh
+python3 evaluation/run_comparison.py --conditions C1,C4   # C2/C3 need an LLM planner; see docs/evaluation.md
+python3 evaluation/run_latency.py --repeats 10
+python3 evaluation/analyze_results.py
+```
+
+See `docs/evaluation.md` for methodology, limitations, and the latest results.
+
+### Known V1 limitations
+
+- Hostnames, IPv6, IPv4-mapped IPv6, and CIDR targets are explicitly
+  unsupported and rejected rather than resolved or expanded.
+- The C2/C3 comparison conditions and any LLM-planner evaluation require a
+  configured `OPENAI_API_KEY`/`OPENAI_MODEL`; they are not run by default.
