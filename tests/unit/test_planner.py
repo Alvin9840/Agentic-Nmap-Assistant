@@ -90,6 +90,21 @@ def test_plan_scan_request_rejects_missing_profile():
         plan_scan_request("port 8080 target 127.0.0.1")
 
 
+def test_plan_scan_request_does_not_truncate_ipv4_mapped_ipv6_target():
+    # Must preserve "::ffff:127.0.0.1" verbatim rather than silently reducing
+    # it to its embedded "127.0.0.1"; the policy guard, not the planner,
+    # rejects unsupported target syntax (see test_policy_guard.py).
+    request = plan_scan_request("profile web-check port 8080 target ::ffff:127.0.0.1")
+    assert request.target == "::ffff:127.0.0.1"
+
+
+def test_plan_scan_request_does_not_truncate_cidr_target():
+    # Must preserve "127.0.0.1/32" verbatim rather than silently dropping the
+    # CIDR suffix; the policy guard rejects CIDR targets explicitly.
+    request = plan_scan_request("profile web-check port 8080 target 127.0.0.1/32")
+    assert request.target == "127.0.0.1/32"
+
+
 def test_plan_scan_request_rejects_empty_text():
     with pytest.raises(PlanningError):
         plan_scan_request("   ")

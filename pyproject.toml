@@ -23,6 +23,9 @@ dev = [
     "pytest-cov>=5.0,<7.0",
     "ruff>=0.5,<1.0",
 ]
+eval = [
+    "matplotlib>=3.8,<4.0",
+]
 
 [project.scripts]
 safe-nmap = "safe_nmap.agent.cli:main"

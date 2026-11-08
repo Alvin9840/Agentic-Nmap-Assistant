@@ -14,13 +14,23 @@ class PlanningError(ValueError):
 
 
 _IPV4_TOKEN = re.compile(
-    r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?!\w|\.\d)"
+    # Exclude a preceding ':' (IPv4-mapped IPv6, e.g. "::ffff:127.0.0.1") and a
+    # following '/' (CIDR, e.g. "127.0.0.1/32") so these unsupported forms are
+    # not silently truncated to their embedded bare IPv4 address; the whole
+    # unsupported literal must reach the caller unparsed.
+    r"(?<![\w.:])(?:\d{1,3}\.){3}\d{1,3}(?!\w|\.\d|/)"
 )
 _TARGET_LABELS = re.compile(
     r"(?ix)(?<![a-z0-9_])(?:target|host|destination)\s*"
-    r"(?:(?:is|at|to)\s+|[:=]\s*)?"
+    # Only treat a single ':'/'=' as a "target:" separator, not the leading
+    # '::' of an IPv6 literal (e.g. "target ::1" must keep both colons).
+    r"(?:(?:is|at|to)\s+|(?:[:=](?!:))\s*)?"
     r"(?!on\b|in\b|for\b|with\b|port\b|ports\b)"
-    r"(?P<value>[a-z0-9][a-z0-9.-]*[a-z0-9]|[a-z0-9])",
+    # Capture '/' and ':' as part of the value too (CIDR, IPv6, IPv4-mapped
+    # IPv6) so an explicitly labeled target is preserved verbatim rather than
+    # silently truncated to an embedded substring; the policy guard rejects
+    # unsupported syntax, the planner must not "fix" it first.
+    r"(?P<value>[a-z0-9:][a-z0-9.:/-]*[a-z0-9]|[a-z0-9])",
 )
 
 _PORT_VALUES = r"\d+(?:\s*(?:,|;|\band\b)\s*\d+)*"
