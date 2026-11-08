@@ -52,6 +52,14 @@ async def run_once(request_text: str, run_index: int) -> LatencyRun:
     request = plan_scan_request(request_text)
     planner_ms = (time.perf_counter() - planner_started_at) * 1000
 
+    # Label the audit log so latency runs are distinguishable from other
+    # experiment conditions and from each other.
+    request = request.model_copy(
+        update={
+            "client_request_id": f"latency-{run_index:03d}",
+            "experiment_condition": "latency",
+        }
+    )
     response = await run_scan(request)
     return LatencyRun(
         run_index=run_index,

@@ -92,6 +92,71 @@ def summarize_comparison(rows: list[dict]) -> list[dict]:
     return summary
 
 
+def _port_state_set(findings: str | None) -> set[str] | None:
+    """Parse a 'port/state,port/state' findings string into a comparable set.
+
+    ``None`` means the findings are missing/unparseable; an empty set means
+    the scan ran but reported no ports (distinct from missing data).
+    """
+    if findings is None:
+        return None
+    if findings == "no ports in output":
+        return set()
+    return set(findings.split(","))
+
+
+def summarize_benign_correctness(rows: list[dict]) -> list[dict]:
+    """Compare C1 (manual Nmap) and C4 (ours) port/state results per benign case.
+
+    Only port+state are compared, not service name: C1 never runs with
+    ``-sV`` while C4's ``service-check`` profile does, so service strings are
+    not directly comparable here.
+    """
+    by_case: dict[str, dict[str, dict]] = {}
+    for row in rows:
+        if row.get("category") != "benign_authorized":
+            continue
+        by_case.setdefault(row["case_id"], {})[row["condition"]] = row
+
+    summary = []
+    for case_id, by_condition in sorted(by_case.items()):
+        c1 = by_condition.get("C1")
+        c4 = by_condition.get("C4")
+        c1_findings = _port_state_set(c1.get("findings")) if c1 else None
+        c4_findings = _port_state_set(c4.get("findings")) if c4 else None
+        match = None
+        if c1_findings is not None and c4_findings is not None:
+            match = c1_findings == c4_findings
+        summary.append(
+            {
+                "case_id": case_id,
+                "match": match,
+                "c1_findings": c1.get("findings") if c1 else None,
+                "c4_findings": c4.get("findings") if c4 else None,
+            }
+        )
+    return summary
+
+
+def summarize_usability(rows: list[dict]) -> list[dict]:
+    """Task-completion rate on benign natural-language requests, condition C4."""
+    benign_c4 = [
+        row
+        for row in rows
+        if row.get("category") == "benign_authorized" and row.get("condition") == "C4"
+    ]
+    if not benign_c4:
+        return [{"condition": "C4", "n_benign_cases": 0, "task_completion_rate": None}]
+    completed = sum(1 for row in benign_c4 if row.get("status") == "success")
+    return [
+        {
+            "condition": "C4",
+            "n_benign_cases": len(benign_c4),
+            "task_completion_rate": round(completed / len(benign_c4), 3),
+        }
+    ]
+
+
 def _print_table(title: str, rows: list[dict]) -> None:
     print(f"\n{title}")
     if not rows:
@@ -167,12 +232,18 @@ def main(argv: list[str] | None = None) -> None:
 
     latency_summary = summarize_latency(latency_rows)
     comparison_summary = summarize_comparison(comparison_rows)
+    benign_correctness = summarize_benign_correctness(comparison_rows)
+    usability = summarize_usability(comparison_rows)
 
     _print_table("Latency summary (ms)", latency_summary)
     _print_table("Comparison summary (block/bypass rate)", comparison_summary)
+    _print_table("Benign correctness (C1 vs C4 port/state match)", benign_correctness)
+    _print_table("Usability (C4 task-completion rate on benign cases)", usability)
 
     _write_csv(latency_summary, args.output_dir / "latency_summary.csv")
     _write_csv(comparison_summary, args.output_dir / "comparison_summary.csv")
+    _write_csv(benign_correctness, args.output_dir / "benign_correctness.csv")
+    _write_csv(usability, args.output_dir / "usability.csv")
     _write_figure(latency_summary, args.output_dir / "latency_summary.png")
 
 

@@ -59,6 +59,7 @@ CSV_FIELDS = [
     "nmap_started",
     "destination",
     "ports",
+    "findings",
     "reason",
     "duration_ms",
 ]
@@ -74,6 +75,7 @@ class ComparisonRecord:
     nmap_started: bool | None = None
     destination: str | None = None
     ports: str | None = None
+    findings: str | None = None
     reason: str | None = None
     duration_ms: float | None = None
 
@@ -183,7 +185,7 @@ async def run_c1(case: dict) -> ComparisonRecord:
         nmap_started=True,
         destination=target,
         ports=",".join(str(port) for port in ports),
-        reason=states,
+        findings=states,
         duration_ms=duration_ms,
     )
 
@@ -205,8 +207,19 @@ async def run_c4(case: dict) -> ComparisonRecord:
             duration_ms=(time.perf_counter() - started_at) * 1000,
         )
 
+    # Label the audit log with the case/condition so results can be traced
+    # back to this run without relying on timing alone.
+    request = request.model_copy(
+        update={"client_request_id": case["case_id"], "experiment_condition": "C4"}
+    )
     response = await run_scan(request)
     duration_ms = (time.perf_counter() - started_at) * 1000
+    findings = None
+    if response.findings is not None:
+        findings = (
+            ",".join(f"{finding.port}/{finding.state}" for finding in response.findings)
+            or "no ports in output"
+        )
     return ComparisonRecord(
         case_id=case["case_id"],
         category=case["category"],
@@ -216,6 +229,7 @@ async def run_c4(case: dict) -> ComparisonRecord:
         nmap_started=response.nmap_started,
         destination=response.resolved_ip,
         ports=",".join(str(port) for port in request.ports),
+        findings=findings,
         reason=response.reason,
         duration_ms=duration_ms,
     )
