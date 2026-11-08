@@ -62,13 +62,8 @@ pytest -q
 3. **Policy-layer overhead and user-time metrics** depend on C2 and on a
    human timing study respectively; neither is computed yet.
 4. **Push/merge this work.** All of M1–M7 currently exists only in local
-   feature branches on this machine. Before merging, check whether `main`
-   or anyone's local copy already has a different `policy_guard.py` /
-   `reporter.py` — a slide deck from this project showed report wording
-   (`"Allowed: False"`, `"Executed:"`, `"is not in the approved
-   allowlist"`) that does not match any string in this repository,
-   suggesting a possibly divergent, unmerged implementation exists
-   somewhere. Reconcile that before merging.
+   feature branches on this machine; push them and merge into `main` so
+   teammates can see the current state.
 5. **Windows/Linux setup verification** — only verified on macOS so far.
 6. Final report sections, slides, and any figures beyond what is already
    in `docs/evaluation.md`.
