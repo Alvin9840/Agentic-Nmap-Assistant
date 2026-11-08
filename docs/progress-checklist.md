@@ -45,8 +45,8 @@ These are the components implemented by A so far. C still needs to verify them t
 - [x] Add a non-blocking concurrency limiter in `server/pipeline.py` driven by `limits.max_concurrent_scans`; verified manually that a second concurrent request is rejected with reason "too many concurrent scans".
 - [x] Add optional `client_request_id` / `experiment_condition` metadata fields to `ScanRequest` and the `scan_network` MCP tool (logging/experiment labels only; never used for authorization).
 - [ ] Review and integrate the command builder, scanner, parser, and server pipeline with the completed policy end-to-end against the real lab (M1/M4).
-- [ ] Implement deterministic report generation (`server/reporter.py` is still empty).
-- [ ] Implement JSONL audit logging (`server/audit.py` is still empty).
+- [x] Implement deterministic report generation (`server/reporter.py`: `render_report(response, profile=None)`; includes a limitations footer and never claims a vulnerability or that a target is secure).
+- [x] Implement JSONL audit logging (`server/audit.py`: `write_event`/`log_outcome_event`, path from `SAFE_NMAP_AUDIT_LOG` or `results/audit.jsonl`). `server/pipeline.py` now writes a fail-closed "decision" event before Nmap starts and a best-effort "outcome" event after; `agent/cli.py` writes a best-effort "planner" event carrying the same `client_request_id` for correlation. Verified with unit tests and one manual end-to-end run (real pipeline, missing-nmap path).
 - [ ] Finalize the approved and decoy Docker Compose lab and its setup/ground-truth documentation.
 - [ ] Complete any remaining non-test setup or implementation documentation.
 
@@ -54,7 +54,7 @@ These are the components implemented by A so far. C still needs to verify them t
 
 - [x] Create unit, integration, end-to-end, and fixture directories.
 - [x] Add a starter evaluation case file and evaluation script placeholders.
-- [x] Implement unit tests for schemas, policy guard/config, command builder, executor (scanner), and XML parser (`tests/unit/`). **Run with `uv run pytest` or, if `uv` is unavailable, `source .venv/bin/activate && pytest -q`: 59 passed.** Planner/LLM-planner unit tests are still missing.
+- [x] Implement unit tests for schemas, policy guard/config, command builder, executor (scanner), XML parser, reporter, audit, and the server pipeline's audit hooks (`tests/unit/`). **Run with `uv run pytest` or, if `uv` is unavailable, `source .venv/bin/activate && pytest -q`: 72 passed.** Planner/LLM-planner unit tests are still missing.
 - [ ] Implement integration tests for MCP, policy, scanner, parser, and the controlled lab.
 - [ ] Implement end-to-end tests from natural-language request through the policy guard.
 - [x] Verify that denied requests never invoke the executor (covered indirectly: `test_policy_guard.py` asserts rejection before a `ValidatedPlan`/scanner call can occur; no direct mock-based pipeline test yet).
@@ -62,9 +62,9 @@ These are the components implemented by A so far. C still needs to verify them t
 - [ ] Verify fresh setup from the documented instructions on a clean machine.
 - [ ] Finalize individual evaluation cases and expected decisions/execution behavior.
 - [ ] Implement the C1–C4 comparison and latency workflows.
-- [x] Run tests and record results: `pytest -q` → 59 passed, 0 failed (2026-11-08, local `.venv`, no `uv` installed on this machine). `ruff check .` is clean for all files touched in M2/M5; 4 pre-existing lint findings remain in untouched `agent/` files.
+- [x] Run tests and record results: `pytest -q` → 72 passed, 0 failed (2026-11-08, local `.venv`, no `uv` installed on this machine). `ruff check .` is clean for all files touched in M2/M3/M5; 4 pre-existing lint findings remain in untouched `agent/` files.
 - [ ] Export reproducible raw results, summaries, and figures.
 
 ## Current Integration Blocker
 
-The CLI can launch `safe_nmap.server.mcp_server`, discover `scan_network`, and route calls into the server pipeline. The policy guard now implements real authorization rules (M2) instead of always raising `NotImplementedError`, and is covered by a passing unit test suite (M5, 59 tests) in addition to earlier manual sanity checks. Remaining blockers before an end-to-end run: `reporter.py` and `audit.py` are still empty, `config/policy.yaml` must be created locally from `config/policy.example.yaml` (git-ignored, required at runtime), and the lab (M1) and nmap binary are not yet set up on a test machine. Planner/LLM-planner and MCP client/server unit, integration, and end-to-end tests are still missing.
+The CLI can launch `safe_nmap.server.mcp_server`, discover `scan_network`, and route calls into the server pipeline. The policy guard now implements real authorization rules (M2) instead of always raising `NotImplementedError`, the reporter and audit log are implemented (M3), and all of this is covered by a passing unit test suite (72 tests) plus one manual end-to-end run of the real server pipeline (policy load -> reject/allow -> audit JSONL -> report rendering, with nmap itself absent so the scan step short-circuits to `scan_failed`). Remaining blockers before a true end-to-end run: `config/policy.yaml` must be created locally from `config/policy.example.yaml` (git-ignored, required at runtime), and the lab (M1) and nmap binary are not yet set up on a test machine. Planner/LLM-planner and MCP client/server unit, integration, and end-to-end tests are still missing.
