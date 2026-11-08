@@ -1,5 +1,84 @@
 ﻿# Safe Nmap Assistant
 
+## Project Status (read this first)
+
+Current work lives on `feature/m1b-lab-and-metrics`, built on top of six
+earlier feature branches (`feature/m1-lab-baseline` →
+`feature/m2-policy-guard-m5-unit-tests` → `feature/m4-end-to-end` →
+`feature/m5-more-integration-tests` → `feature/m5-planner-tests` →
+`feature/m6-evaluation` → `feature/m1b-lab-and-metrics`), 9 commits ahead of
+`main`. **None of this has been pushed to `origin` or merged yet** — see
+"Not done yet" below before you start building on `main`.
+
+### Architecture
+
+```text
+CLI -> Agent/Planner (deterministic or LLM) -> MCP Client -> MCP Server
+  -> Policy Guard -> Command Builder -> Nmap Executor -> XML Parser -> Report
+```
+
+The policy guard is the only trusted authorization point; user text,
+planner output, and MCP arguments are all untrusted (see section 3 below
+for the full trust-boundary diagram, and `docs/architecture.md`).
+
+### Done and tested
+
+| Milestone | What | Evidence |
+|---|---|---|
+| M1 | Loopback lab (port-scope: `127.0.0.1:8080`/`8081`) **and** M1b target-scope lab (distinct container IPs `172.28.0.10`/`.11` on an isolated Docker network, `lab/docker-compose.targets.yml`) | `lab/README.md`; `tests/integration/test_lab_scanner.py`, `test_target_scope_lab.py` |
+| M2 | Policy guard: canonical-IPv4-only; hostnames, CIDR, IPv6, IPv4-mapped IPv6, and non-canonical numeric forms are rejected outright, never resolved/expanded (design finalized — see `docs/implementation-plan.md` §2 decision 11) | `tests/unit/test_policy_guard.py` |
+| M3 | Deterministic report (`server/reporter.py`) + JSONL audit log (`server/audit.py`: decision event before Nmap starts, outcome event after) | `tests/unit/test_reporter.py`, `test_audit.py` |
+| M4 | Real end-to-end CLI run against the lab (approved request succeeds, decoy request rejected); found and fixed a real bug where the MCP stdio server crashed on every launch | manual run + `tests/end_to_end/` |
+| M5 | 113 unit/integration tests passing without any lab running (120 with both labs up) | `pytest -q` |
+| M6 | Evaluation harness: C1 (manual Nmap) and C4 (our system) run for real across 22 cases (`evaluation/cases.json`, supersedes an earlier `T1`–`T10` draft — see decision 12); 2 real planner bugs found and fixed (CIDR and IPv4-mapped-IPv6 targets were being silently truncated) | `docs/evaluation.md` |
+| M7 | Setup instructions (section 21 below) verified by cloning the repo into a separate directory and following them exactly | `docs/progress-checklist.md` |
+
+### How to run it
+
+See **section 21 "Setup and Usage"** below for the full, verified steps.
+Quick version:
+
+```sh
+python3 -m venv .venv && source .venv/bin/activate && pip install -e ".[dev,eval]"
+cp config/policy.example.yaml config/policy.yaml
+docker compose -f lab/docker-compose.yml up -d
+safe-nmap --planner deterministic --request "profile web-check port 8080 target 127.0.0.1"
+pytest -q
+```
+
+### Not done yet — handoff items
+
+1. **C2 (agent with no policy guard) and C3 (prompt-only guardrail)** both
+   require the same LLM planner/model and a configured
+   `OPENAI_API_KEY`/`OPENAI_MODEL`, which this environment does not have.
+   `evaluation/run_comparison.py` already has the structure
+   (`run_c2_or_c3`), but it intentionally returns `not_run` placeholders
+   rather than shipping an untested "skip the policy guard" code path.
+   **Whoever has an API key should implement and run these.**
+2. **Real prompt-injection testing against the LLM planner** — same
+   blocker; only the deterministic planner has been exercised against
+   injection-style inputs, which is explicitly not evidence of LLM
+   behavior (see `docs/evaluation.md`).
+3. **Policy-layer overhead and user-time metrics** depend on C2 and on a
+   human timing study respectively; neither is computed yet.
+4. **Push/merge this work.** All of M1–M7 currently exists only in local
+   feature branches on this machine. Before merging, check whether `main`
+   or anyone's local copy already has a different `policy_guard.py` /
+   `reporter.py` — a slide deck from this project showed report wording
+   (`"Allowed: False"`, `"Executed:"`, `"is not in the approved
+   allowlist"`) that does not match any string in this repository,
+   suggesting a possibly divergent, unmerged implementation exists
+   somewhere. Reconcile that before merging.
+5. **Windows/Linux setup verification** — only verified on macOS so far.
+6. Final report sections, slides, and any figures beyond what is already
+   in `docs/evaluation.md`.
+
+See `docs/progress-checklist.md` for the full item-by-item implemented/
+tested status and `docs/evaluation.md` for the real measured results and
+their limitations.
+
+---
+
 ## 1. Instructions for the Coding Agent
 
 You are implementing a course project for CS/ECE 5584: Network Security.
