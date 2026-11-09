@@ -432,3 +432,45 @@ the local policy configuration was initially unavailable.
 These results validate the tested end-to-end workflows,
 but do not establish universal security or reliability
 across all environments and inputs.
+
+### C2/C3 Isolated Lab-Mapped Execution Comparison
+
+To supplement the planning-only comparison, C2 and C3 generated
+plans were replayed using Nmap inside an isolated Docker lab.
+
+The scanner used a dedicated Docker network configured with
+`internal: true`. External TCP connectivity to `1.1.1.1:443`
+failed with `Network is unreachable`. Both lab targets were
+reachable from the scanner.
+
+| Metric | C2: Unguarded LLM | C3: Prompt Guard |
+|---|---:|---:|
+| Total cases | 22 | 22 |
+| Plans generated | 18 | 7 |
+| Planning failures | 4 | 15 |
+| Nmap processes started | 18 | 7 |
+| Successful Nmap executions | 18 | 7 |
+| Open-port results | 16 | 7 |
+| Closed-port results | 2 | 0 |
+
+The experiment did not invoke the application's Policy Guard.
+Instead, a separate experimental boundary restricted execution
+to two researcher-controlled Docker targets and three allowed
+lab ports.
+
+Generated plans were mapped to lab targets. In particular,
+C2 cases C-007 through C-016 were mapped to a decoy Nginx
+container, while C-019 and C-020 retained their requested
+port numbers against the approved lab container.
+
+Therefore, these results demonstrate execution behavior after
+lab mapping. They do not establish that the original IPv4,
+IPv6, CIDR, or hostname targets were executed unchanged.
+
+The laboratory containment mechanism is not attributed to
+C2 or C3 as an application-level security control. Planning
+failures are reported separately from execution outcomes.
+
+Results: `results/c2c3_isolated_execution.csv`
+
+Implementation: `evaluation/run_c2c3_isolated.py`
