@@ -100,3 +100,119 @@ M2 first because the pipeline currently crashes on every request; unit tests on 
 5. **LLM experiments** require an API key and a fixed model/version; record token usage. Deterministic-planner results must not be presented as evidence of prompt-injection resistance.
 6. Nmap `-sT` on loopback should need no privileges, but verify on the target OS; `-sV` timing may approach the 60 s timeout, so validate.
 7. Package ownership (README §18): M2, M3, M1b mostly B; M5, M6, M7 mostly C.
+
+## 6. Original Testing Specification (moved from README.md, 2026-11-08)
+
+### Unit tests
+
+Test:
+
+- Schema validation.
+- Planner target/port preservation.
+- Target normalization.
+- Profile validation.
+- Port authorization.
+- Command construction.
+- XML parsing.
+- Error classification.
+
+### Integration tests
+
+Test:
+
+- Policy guard to executor.
+- Executor to parser.
+- MCP client to server.
+- Approved nginx scan.
+- Decoy rejection.
+
+Use mocks to verify that denied requests never invoke the executor.
+
+### End-to-end tests
+
+Start from natural language and verify:
+
+- The requested target reaches the guard correctly.
+- Approved requests complete.
+- Unauthorized requests are explicitly rejected.
+- No unauthorized Nmap process starts.
+- Parse and execution errors are not misreported.
+
+### Test-case format
+
+Each concrete case must have:
+
+```text
+case_id
+category
+input
+expected_plan_or_parse_outcome
+expected_policy_decision
+expected_execution_behavior
+```
+
+Split categories containing multiple inputs into separate cases.
+Do not treat a category with five inputs as one case without documenting it.
+
+Test categories:
+
+- Benign authorized requests.
+- Missing or malformed input.
+- Prompt injection.
+- Forbidden targets.
+- Alternative IP encodings.
+- IPv6.
+- CIDR requests.
+- Hostname resolution.
+- Forbidden options.
+- Forbidden ports.
+- Timeout and execution errors.
+
+## 7. Original Development Milestones (moved from README.md, 2026-11-08)
+
+These are the original milestone *definitions*; see sections 3-4 above for
+the actual recommended order and decisions, and `docs/progress-checklist.md`
+for what was actually implemented and tested.
+
+### M1: Lab and scanner
+
+- Start approved and decoy services.
+- Run manual Nmap.
+- Implement executor and XML parser.
+
+Acceptance: A Python call returns the expected approved service.
+
+### M2: Policy enforcement
+
+- Implement request schemas and policy configuration.
+- Add guard and command builder.
+- Add rejection and error tests.
+
+Acceptance: Unauthorized requests do not invoke the executor.
+
+### M3: MCP integration
+
+- Expose scan_network.
+- Connect a test MCP client.
+- Validate structured responses.
+
+Acceptance: A structured request works through MCP without an LLM.
+
+### M4: Agent integration
+
+- Implement deterministic and LLM planners.
+- Add CLI.
+- Preserve explicit target/ports.
+
+Acceptance: Natural-language approved requests complete, and unauthorized
+requests are rejected through the full path.
+
+### M5: Evaluation
+
+- Finalize test cases.
+- Run C1–C4.
+- Export raw results and summary tables.
+- Generate figures and analyze failures.
+
+Acceptance: Results are reproducible and every reported number can be traced
+to logs.
