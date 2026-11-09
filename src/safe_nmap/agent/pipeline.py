@@ -5,7 +5,6 @@ from collections.abc import Callable
 from safe_nmap.agent.mcp_client import MCPClient
 from safe_nmap.shared.schemas import ScanRequest, ScanResponse
 
-
 Planner = Callable[[str], ScanRequest]
 
 

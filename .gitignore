@@ -226,3 +226,6 @@ results/*
 !results/.gitkeep
 !results/README.md
 evaluation/output/
+
+# PyCharm
+.idea/

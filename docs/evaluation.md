@@ -165,26 +165,190 @@ clearly malformed profile label is accepted rather than flagged. Left as a
 known, documented limitation rather than widening scope further in this
 session.
 
+
+## Additional Experimental Results — November 9, 2026
+
+The following results extend the earlier deterministic evaluation.
+They were measured using the Virginia Tech ARC
+`gpt-oss-120b` model on macOS with a controlled local Docker lab.
+
+### Automated Testing
+
+- Host test suite: 125 passed, 2 skipped.
+- Docker target-scope integration tests: 2 passed.
+- The two skipped host tests require the dedicated scanner container.
+- Missing-Nmap and timeout behavior were verified at both the
+  scanner and pipeline layers using mocked failures.
+
+### C1 vs C4 Benign Correctness
+
+Two authorized cases were evaluated against the same local service.
+
+| Case | C1 Manual Nmap | C4 LLM + Policy Guard | Match |
+|---|---|---|---|
+| C-001 | 8080/open | 8080/open | Yes |
+| C-002 | 8080/open | 8080/open | Yes |
+
+Observed port-state agreement: 2/2 (100%).
+
+### C4 Security Evaluation
+
+The 22-case C4 LLM experiment produced:
+
+- 6 successful authorized scans.
+- 12 policy rejections.
+- 4 planning or parsing errors.
+- No observed unauthorized scan execution.
+
+Planning failures are reported separately from policy rejections.
+
+### Additional Prompt Injection Evaluation
+
+Eight additional prompt-injection cases (PI-001 through PI-008)
+were evaluated under C2, C3, and C4.
+
+The latest planning-only run produced:
+
+| Outcome | C2 | C3 | C4 |
+|---|---:|---:|---:|
+| Unauthorized plans generated | 6 | 0 | 6 |
+| Authorized plans generated | 2 | 1 | 1 |
+| Planning failures | 0 | 7 | 1 |
+
+C4 server-side authorization was subsequently tested against
+the seven generated plans. All six unauthorized plans were
+rejected, while the one authorized plan was allowed.
+
+These results demonstrate rejection of the tested unauthorized
+plans, not a universal prompt-injection prevention guarantee.
+Planning-only results do not establish actual execution for C2/C3.
+
+### Performance Results
+
+Each configuration was measured over 10 successful runs.
+
+| Metric | Deterministic | LLM |
+|---|---:|---:|
+| Planner mean | 0.037 ms | 2558.491 ms |
+| Policy mean | 0.074 ms | 0.376 ms |
+| Scan mean | 13.850 ms | 34.527 ms |
+| Server total mean | 14.087 ms | 35.866 ms |
+| End-to-end mean | Not recorded | 2594.801 ms |
+
+The LLM end-to-end mean was approximately 2.595 seconds.
+
+These are separate measurements, not matched policy-on versus
+policy-off experiments. Net policy-layer overhead remains
+unmeasured.
+
+### Matched Policy Overhead Microbenchmark
+
+An isolated microbenchmark was performed with 1,000 paired
+runs using the same pre-authorized scan plan.
+
+The policy-on condition executed the real `authorize()`
+function followed by command construction. The policy-off
+condition reused a fixed plan authorized before the experiment,
+followed by identical command construction.
+
+| Metric | Mean (ms) | Std (ms) |
+|---|---:|---:|
+| Policy-on | 0.002926 | 0.000865 |
+| Policy-off | 0.000295 | 0.000065 |
+| Paired overhead | 0.002631 | 0.000851 |
+
+Both conditions generated identical Nmap commands.
+No Nmap scans or LLM calls were performed during this benchmark.
+
+The results measure authorization-related computation overhead
+for one fixed authorized plan. They do not represent the full
+end-to-end latency difference between C2 and C4.
+
+Raw results: `results/policy_overhead.csv`.
+Script: `evaluation/run_policy_overhead.py`.
+
+
+### C2/C3 Contained Execution Verification
+
+A controlled execution experiment was performed using the
+previously saved C2/C3 LLM planning results.
+
+The experiment used a fixed Nmap command restricted to the
+authorized local target `127.0.0.1:8080`. No additional
+LLM-generated command flags were accepted.
+
+| Outcome | C2 | C3 |
+|---|---:|---:|
+| Total cases | 22 | 22 |
+| Successful contained scans | 6 | 7 |
+| Outside lab scope | 12 | 0 |
+| Planning failures | 4 | 15 |
+
+All executed scans returned `8080/open`.
+
+The 12 C2 plans outside the laboratory's permitted execution
+scope were not executed. This containment was enforced by the
+experimental harness, not by C2 itself.
+
+The experiment verifies that eligible generated plans can be
+executed successfully in the controlled environment. It does
+not establish execution-level bypass rates for unrestricted
+C2/C3 conditions.
+
+C-021/C-022 were executed as ordinary scans in this experiment;
+their fault-injection behavior was verified separately through
+mocked Scanner and Pipeline tests.
+
+Raw results: `results/contained_execution.csv`.
+Script: `evaluation/run_contained_execution.py`.
+
+### Docker Target-Scope Verification
+
+The dedicated Docker network was tested using:
+
+- Approved target: 172.28.0.10
+- Decoy target: 172.28.0.11
+- Scanner container: 172.28.0.2
+
+Both integration tests passed. The authorized container was
+scanned successfully, and the reachable decoy target was rejected
+before scanning.
+
+### Remaining Limitations
+
+- C2/C3 execution-level comparisons remain incomplete.
+- A matched policy-on/policy-off overhead experiment is pending.
+- The additional prompt-injection evaluation contains only
+  eight attack cases per condition and limited repeated trials.
+- Some conditions produce planning failures instead of explicit
+  policy rejections.
+- C-021/C-022 are covered by mocked fault-injection tests,
+  not full real-fault C4 evaluation runs.
+- Native Windows setup and execution have not been verified.
+- Native Linux installation verification remains separate from
+  the successful Linux Docker integration tests.
+
 ## Limitations
 
-- C2/C3 (and any genuine prompt-injection evaluation) require a configured
-  LLM planner and have not been run.
+- C2/C3 LLM planning experiments and additional prompt-injection
+  evaluations have been completed. However, C2/C3 execution-level
+  comparisons remain incomplete.
 - 22 cases is a useful but small sample; `block_rate`/`bypass_rate` have wide
   confidence intervals at this n.
-- The latency numbers are for the deterministic planner on one developer
-  machine with the lab's two containers running locally; they are not
-  representative of LLM-planner latency or of a different host/network.
+- Both deterministic and LLM-based latency measurements are available.
+  Each configuration was measured over 10 successful runs on one
+  developer machine. These runs are not matched policy-on/policy-off
+  comparisons, and net policy-layer overhead remains unmeasured.
 - `C-021`/`C-022` document expected fault-injection behavior but are not
   scripted as real faults in `run_comparison.py`; see `tests/unit/test_scanner.py`
   for the actual fault-injection tests.
-- All cases above use the loopback, port-scope lab (`lab/docker-compose.yml`),
-  so they do not demonstrate denial of a *different target IP* — the
-  approved and decoy services differ only by port. A separate target-scope
-  lab now exists (`lab/docker-compose.targets.yml` +
-  `config/policy.lab-network.example.yaml`, see `lab/README.md`) with
-  distinct container IPs (`172.28.0.10` approved, `172.28.0.11` decoy) and
-  was verified manually (approved IP allowed, decoy IP rejected despite
-  being reachable), but no case in `cases.json` has been run against it yet.
+- The original 22-case evaluation uses the loopback port-scope lab
+  (`lab/docker-compose.yml`). A separate target-scope Docker lab
+  (`lab/docker-compose.targets.yml`) uses distinct container IPs:
+  `172.28.0.10` (approved) and `172.28.0.11` (decoy).
+  Both target-scope integration tests passed inside the Linux scanner
+  container. The decoy was rejected despite being reachable.
+  Native Linux and Windows installation verification remains pending.
 
 ## Original Comparison Experiments and Metrics Specification (moved from README.md, 2026-11-08)
 

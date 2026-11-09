@@ -89,3 +89,61 @@ async def test_run_scan_echoes_client_request_id_into_decision_event(
 
     events = _read_events(audit_log)
     assert events[0]["client_request_id"] == "abc-123"
+
+async def test_run_scan_handles_missing_nmap(
+        monkeypatch, configured_policy, audit_log
+):
+    async def fake_run_nmap(arguments, timeout_seconds):
+        return scanner.ScanExecution(
+            nmap_started=False,
+            xml_output=None,
+            error_message="Nmap executable was not found on PATH.",
+            scan_ms=0.1,
+        )
+
+    monkeypatch.setattr(scanner, "run_nmap", fake_run_nmap)
+
+    request = ScanRequest(
+        target="127.0.0.1",
+        ports=[8080],
+        profile="web-check",
+    )
+
+    response = await pipeline.run_scan(request)
+
+    assert response.status != "success"
+    assert response.nmap_started is False
+    assert "not found" in response.reason.lower()
+
+    events = _read_events(audit_log)
+    assert events[0]["policy_decision"] == "allowed"
+    assert events[-1]["final_status"] == response.status
+
+async def test_run_scan_handles_nmap_timeout(
+        monkeypatch, configured_policy, audit_log
+):
+    async def fake_run_nmap(arguments, timeout_seconds):
+        return scanner.ScanExecution(
+            nmap_started=True,
+            xml_output=None,
+            error_message="Nmap scan timed out after 5 seconds.",
+            scan_ms=5000.0,
+        )
+
+    monkeypatch.setattr(scanner, "run_nmap", fake_run_nmap)
+
+    request = ScanRequest(
+        target="127.0.0.1",
+        ports=[8080],
+        profile="web-check",
+    )
+
+    response = await pipeline.run_scan(request)
+
+    assert response.status != "success"
+    assert response.nmap_started is True
+    assert "timed out" in response.reason.lower()
+
+    events = _read_events(audit_log)
+    assert events[0]["policy_decision"] == "allowed"
+    assert events[-1]["final_status"] == response.status

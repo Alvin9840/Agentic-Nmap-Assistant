@@ -48,3 +48,35 @@ def test_build_nmap_command_uses_resolved_ip_not_original_target():
     command = build_nmap_command(_plan(original_target="localhost", resolved_ip="127.0.0.1"))
     assert command[-1] == "127.0.0.1"
     assert "localhost" not in command
+
+
+def test_command_builder_excludes_unauthorized_flags():
+    from safe_nmap.server.command_builder import build_nmap_command
+    from safe_nmap.shared.schemas import ValidatedPlan
+
+    plan = ValidatedPlan(
+        original_target="127.0.0.1",
+        resolved_ip="127.0.0.1",
+        ports=[8080],
+        profile="web-check",
+        timeout_seconds=60,
+        service_detection=False,
+    )
+
+    command = build_nmap_command(plan)
+
+    assert command == [
+        "nmap",
+        "-n",
+        "-sT",
+        "-T3",
+        "-oX",
+        "-",
+        "-p",
+        "8080",
+        "127.0.0.1",
+    ]
+
+    assert "-A" not in command
+    assert "--script" not in command
+    assert "-sV" not in command

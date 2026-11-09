@@ -1,0 +1,5 @@
+phase,n,mean_ms,std_ms
+planner_ms,10,0.037,0.006
+policy_ms,10,0.074,0.128
+scan_ms,10,13.85,1.004
+server_total_ms,10,14.087,1.19

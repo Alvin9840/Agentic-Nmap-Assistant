@@ -229,3 +229,129 @@ See `docs/evaluation.md` for methodology, limitations, and the latest results.
   results, limitations, and bugs found while evaluating.
 - `docs/progress-checklist.md` — the authoritative, item-by-item
   implemented/tested status, including the original "Definition of Done".
+
+
+## Development Update — November 9, 2026
+
+### Completed Work
+
+- Integrated Virginia Tech ARC's `gpt-oss-120b` model using the OpenAI-compatible Chat Completions API.
+- Implemented C2 (LLM without application policy guard) and C3 (LLM with prompt-only restrictions) planning experiments.
+- Added selectable LLM and deterministic planner modes for C4.
+- Verified the C4 end-to-end pipeline: LLM → server-side policy guard → Nmap → results.
+- Confirmed authorized scans succeed and unauthorized port requests are rejected before Nmap execution.
+- Verified the command builder excludes unauthorized Nmap flags.
+- Passed 123 automated tests; 2 Docker-specific integration tests remain skipped.
+
+### Experiment Results
+
+Environment: macOS (Apple Silicon), Python 3.11, Docker, Nmap 7.99.1, VT ARC `gpt-oss-120b`.
+
+#### C2/C3 Planning Evaluation
+
+22 test cases per condition.
+
+| Metric | C2 | C3 |
+|---|---:|---:|
+| Plans generated | 18 | 7 |
+| Planning failures | 4 | 15 |
+| Plan generation rate | 81.8% | 31.8% |
+
+These are planning-only results. They do not establish actual scan execution or prompt-injection success rates.
+
+#### C4 LLM + Server-side Policy Guard
+
+22 test cases:
+
+- Successful scans: 6
+- Rejected by policy guard: 12
+- Planner errors before policy evaluation: 4
+- Nmap started: 6
+- Nmap not started: 16
+
+All 12 policy-rejected cases had `nmap_started=False`.
+
+#### Performance Evaluation
+
+10 successful runs per configuration.
+
+| Metric | Deterministic | LLM |
+|---|---:|---:|
+| Planner mean | 0.037 ms | 2558.491 ms |
+| Policy mean | 0.074 ms | 0.376 ms |
+| Scan mean | 13.850 ms | 34.527 ms |
+| Server total mean | 14.087 ms | 35.866 ms |
+| End-to-end mean | Not separately recorded | 2594.801 ms |
+
+These measurements come from separate runs. The policy-stage timing is not a matched estimate of net policy overhead.
+
+### Remaining Work
+
+- Complete execution-level C2/C3 comparisons in an isolated lab.
+- Finalize prompt-injection outcome classification and security metrics.
+- Execute the missing-executable and timeout fault-injection scenarios.
+- Complete matched policy-overhead measurements.
+- Verify Windows and Linux setup, or document unverified platforms.
+- Finalize experiment documentation, report, and presentation.
+
+### Experimental Limitations
+
+- The C2/C3 results are planning-only.
+- LLM output may vary across runs.
+- Some C4 cases fail before reaching the policy guard.
+- Fault-injection scenarios C-021 and C-022 have not yet been executed under their intended failure conditions.
+- Cross-platform verification remains pending.
+
+
+### Final Verification Update
+
+Additional verification was completed on November 9, 2026:
+
+- Automated host test suite: 125 passed, 2 skipped.
+- Both skipped target-scope integration tests passed separately
+  inside the dedicated Docker Linux scanner container.
+- C1 manual Nmap and C4 matched on both benign authorized
+  cases (2/2 port-state agreement).
+- Eight additional prompt-injection cases were evaluated under
+  C2, C3, and C4 (24 planning-only records).
+- Six unauthorized C4-generated plans were rejected by the
+  server-side Policy Guard (6/6).
+- Missing-Nmap and scan-timeout behavior were verified using
+  mocked Scanner and Pipeline tests.
+- LLM end-to-end latency averaged 2594.801 ms over 10
+  successful authorized runs.
+
+Remaining limitations include unmatched policy-on/policy-off
+overhead measurements, incomplete C2/C3 execution-level
+comparisons, and unverified native Windows/Linux installations.
+
+See `docs/evaluation.md` for the detailed methodology and
+experimental results.
+
+
+
+### Additional Performance and Execution Verification
+
+Two further evaluations were completed on November 9, 2026.
+
+**Policy Overhead Microbenchmark**
+
+- 1,000 matched policy-on/policy-off measurements.
+- Policy-on mean: 0.002926 ms.
+- Policy-off mean: 0.000295 ms.
+- Paired authorization overhead: 0.002631 ms.
+- Both conditions generated identical Nmap commands.
+- This microbenchmark does not measure full C2/C4 end-to-end overhead.
+
+**C2/C3 Contained Execution**
+
+- C2: 6 successful scans, 12 outside laboratory scope,
+  and 4 planning failures.
+- C3: 7 successful scans and 15 planning failures.
+- All executed scans returned `8080/open`.
+- The independent experimental harness restricted execution
+  to the authorized local target `127.0.0.1:8080`.
+- The results do not establish unrestricted C2/C3 bypass rates.
+
+Detailed methodology and limitations are documented in
+`docs/evaluation.md`.

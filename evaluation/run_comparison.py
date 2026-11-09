@@ -40,6 +40,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
+from safe_nmap.agent.llm_planner import LLMPlanner, LLMUnavailableError
 from safe_nmap.agent.planner import PlanningError, plan_scan_request
 from safe_nmap.server import parser as nmap_parser
 from safe_nmap.server import (
@@ -190,11 +191,21 @@ async def run_c1(case: dict) -> ComparisonRecord:
     )
 
 
-async def run_c4(case: dict) -> ComparisonRecord:
+async def run_c4(
+    case: dict,
+    planner_mode: str = "deterministic",
+) -> ComparisonRecord:
     """The real production path: deterministic planner -> policy guard -> scanner."""
     started_at = time.perf_counter()
     try:
-        request = plan_scan_request(case["input"])
+        if planner_mode == "llm":
+            planner = LLMPlanner(condition="C4")
+            request = planner.plan_scan_request(case["input"])
+        elif planner_mode == "deterministic":
+            request = plan_scan_request(case["input"])
+        else:
+            raise ValueError(f"Unknown planner mode: {planner_mode}")
+
     except PlanningError as exc:
         return ComparisonRecord(
             case_id=case["case_id"],
@@ -235,19 +246,57 @@ async def run_c4(case: dict) -> ComparisonRecord:
     )
 
 
+
 def run_c2_or_c3(case: dict, condition: str) -> ComparisonRecord:
-    """Not executed: both conditions require the same LLM planner/model and no
-    API key is configured in this environment. See module docstring."""
+    """Evaluate LLM planning without executing an Nmap scan."""
+    start_time = time.perf_counter()
+
+    try:
+        planner = LLMPlanner(condition=condition)
+        request = planner.plan_scan_request(case["input"])
+
+        duration_ms = (time.perf_counter() - start_time) * 1000
+
+        return ComparisonRecord(
+            case_id=case["case_id"],
+            category=case["category"],
+            condition=condition,
+            status="plan_generated",
+            policy_decision="not_evaluated",
+            nmap_started=False,
+            destination=request.target,
+            ports=",".join(str(p) for p in request.ports),
+            reason=f"Profile: {request.profile}",
+            duration_ms=duration_ms,
+        )
+
+    except LLMUnavailableError as exc:
+        status = "llm_unavailable"
+        reason = str(exc)
+
+    except PlanningError as exc:
+        status = "planning_failed"
+        reason = str(exc)
+
     return ComparisonRecord(
         case_id=case["case_id"],
         category=case["category"],
         condition=condition,
-        status="not_run",
-        reason="requires a configured LLM planner (OPENAI_API_KEY/OPENAI_MODEL); not executed",
+        status=status,
+        policy_decision="not_evaluated",
+        nmap_started=False,
+        reason=reason,
+        duration_ms=(time.perf_counter() - start_time) * 1000,
     )
 
 
-async def run_all(cases: list[dict], conditions: list[str], policy_path: Path) -> list[ComparisonRecord]:
+
+async def run_all(
+    cases: list[dict],
+    conditions: list[str],
+    policy_path: Path,
+    planner_mode: str = "deterministic",
+) -> list[ComparisonRecord]:
     policy_config.reset_policy_cache()
     os.environ["SAFE_NMAP_POLICY"] = str(policy_path)
 
@@ -260,7 +309,7 @@ async def run_all(cases: list[dict], conditions: list[str], policy_path: Path) -
         if "C3" in conditions:
             records.append(run_c2_or_c3(case, "C3"))
         if "C4" in conditions:
-            records.append(await run_c4(case))
+            records.append(await run_c4(case, planner_mode=planner_mode))
     return records
 
 
@@ -288,6 +337,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=PROJECT_ROOT / "config" / "policy.example.yaml",
         help="Policy file used for the C4 condition.",
     )
+
+    parser.add_argument(
+        "--planner",
+        choices=["deterministic", "llm"],
+        default="deterministic",
+        help="Planner used for C4 (default: deterministic).",
+    )
     return parser.parse_args(argv)
 
 
@@ -303,7 +359,14 @@ def main(argv: list[str] | None = None) -> None:
             file=sys.stderr,
         )
 
-    records = asyncio.run(run_all(cases, conditions, args.policy))
+    records = asyncio.run(
+        run_all(
+            cases,
+            conditions,
+            args.policy,
+            planner_mode=args.planner,
+        )
+    )
     write_csv(records, args.output)
     print(f"Wrote {len(records)} rows to {args.output}")
 

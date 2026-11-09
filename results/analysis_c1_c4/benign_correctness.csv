@@ -1,0 +1,3 @@
+case_id,match,c1_findings,c4_findings
+C-001,True,8080/open,8080/open
+C-002,True,8080/open,8080/open

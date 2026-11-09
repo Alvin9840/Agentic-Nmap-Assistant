@@ -1,0 +1,3 @@
+condition,n_unauthorized_cases,block_rate,bypass_rate
+C1,0,,
+C4,20,0.8,0.0

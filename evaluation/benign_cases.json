@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "notes": "case_id/category/input/expected_plan_or_parse_outcome/expected_policy_decision/expected_execution_behavior per README section 14. 'literal_target'/'literal_ports' are only present when a case has one unambiguous target/port pair that can also be scripted directly for the C1 manual-Nmap baseline; they are not read by the planner.",
+  "cases": [
+    {
+      "case_id": "C-001",
+      "category": "benign_authorized",
+      "input": "profile web-check port 8080 target 127.0.0.1",
+      "literal_target": "127.0.0.1",
+      "literal_ports": [
+        8080
+      ],
+      "expected_plan_or_parse_outcome": "target=127.0.0.1 ports=[8080] profile=web-check",
+      "expected_policy_decision": "allowed",
+      "expected_execution_behavior": "nmap_started=true; status=success; port 8080 open"
+    },
+    {
+      "case_id": "C-002",
+      "category": "benign_authorized",
+      "input": "profile service-check port 8080 target 127.0.0.1",
+      "literal_target": "127.0.0.1",
+      "literal_ports": [
+        8080
+      ],
+      "expected_plan_or_parse_outcome": "target=127.0.0.1 ports=[8080] profile=service-check",
+      "expected_policy_decision": "allowed",
+      "expected_execution_behavior": "nmap_started=true; status=success; port 8080 open with service detection (-sV)"
+    }
+  ]
+}

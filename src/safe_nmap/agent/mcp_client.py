@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from contextlib import AsyncExitStack
 from types import TracebackType
+from typing import Self
 
 import mcp.types as mcp_types
 from mcp import Client, StdioServerParameters
 from pydantic import ValidationError
 
 from safe_nmap.shared.schemas import ScanRequest, ScanResponse
-
 
 TOOL_NAME = "scan_network"
 
@@ -27,7 +27,7 @@ class MCPClient:
         self._exit_stack: AsyncExitStack | None = None
         self._client: Client | None = None
 
-    async def __aenter__(self) -> MCPClient:
+    async def __aenter__(self) -> Self:
         if self._client is not None:
             raise MCPClientError("This MCP client is already connected.")
 

@@ -98,7 +98,7 @@ def _extract_profile(text: str) -> str:
         explicit_profiles.append(value)
 
     if explicit_profiles:
-        if len(set(value.lower() for value in explicit_profiles)) > 1:
+        if len({value.lower() for value in explicit_profiles}) > 1:
             raise PlanningError("Multiple different profiles were specified.")
         return explicit_profiles[0]
 
