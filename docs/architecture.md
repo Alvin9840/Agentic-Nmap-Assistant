@@ -21,4 +21,5 @@ without the Docker lab, 123 with it running). M6 (evaluation) is implemented
 and run for the conditions that do not require an LLM (C1, C4, latency); see
 `docs/evaluation.md` for real measured results and for why C2/C3 were not
 run. See `docs/progress-checklist.md` for the authoritative, item-by-item
-implemented/tested status and `README.md` section 21 for setup and usage.
+implemented/tested status and `README.md`'s "Setup and Usage" section for
+setup and usage.

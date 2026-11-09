@@ -75,3 +75,37 @@ None outstanding for V1 as scoped. M1 (lab, including the M1b target-scope lab),
 Re-verified every factual claim in `README.md`'s "Project Status" section against a clean run on `main` (not just the feature branch): `pytest -q` (113 passed/7 skipped with no lab; 113 passed/7 skipped with both labs up *before* the fix below; 118 passed/2 skipped with both labs up *after*), `ruff check .` (same 4 pre-existing findings, none introduced by this work), a real CLI run against the loopback lab (approved succeeds, decoy rejected), and the evaluation scripts (reproduced C4 block_rate=0.80/bypass_rate=0.00 and the benign-correctness/usability numbers).
 
 **Found and fixed a real infrastructure bug while verifying:** `lab/docker-compose.yml` and `lab/docker-compose.targets.yml` both live in `lab/`, so Docker Compose derived the same default project name (`lab`) for both. Bringing up the target-scope lab second silently took over the loopback lab's `approved-nginx`/`decoy-nginx` containers (same service names in both files), un-publishing their host ports without any error — `tests/integration/test_lab_scanner.py` then skipped even though "the lab was up." Fixed by adding an explicit, distinct `name:` to each Compose file (`safe-nmap-lab-loopback` / `safe-nmap-lab-targets`); both labs now run independently and simultaneously. Also corrected the README's "120 with both labs up" claim: a single `pytest -q` from the host tops out at 118 (the 2 target-scope tests only pass when run *inside* the `scanner` container, by design); 120 requires two separate test invocations, not one.
+
+## Original Definition of Done (moved from README.md, 2026-11-08)
+
+The project is complete when:
+
+- A fresh developer can follow the documented setup.
+- The controlled testbed starts reproducibly.
+- The agent submits structured requests through MCP.
+- User-specified targets and ports are not silently replaced.
+- The server independently authorizes every scan.
+- Unauthorized requests do not start Nmap.
+- Scan failures are clearly distinguished from port states.
+- Results and logs are reproducible.
+- C1–C4 comparisons are completed or explicitly documented as limitations.
+- Reported metrics are backed by raw data.
+- No secrets or sensitive company data are committed.
+- README, presentation, and report accurately match the implementation.
+
+## Original Definition of Done (moved from README.md, 2026-11-08)
+
+The project is complete when:
+
+- A fresh developer can follow the documented setup.
+- The controlled testbed starts reproducibly.
+- The agent submits structured requests through MCP.
+- User-specified targets and ports are not silently replaced.
+- The server independently authorizes every scan.
+- Unauthorized requests do not start Nmap.
+- Scan failures are clearly distinguished from port states.
+- Results and logs are reproducible.
+- C1–C4 comparisons are completed or explicitly documented as limitations.
+- Reported metrics are backed by raw data.
+- No secrets or sensitive company data are committed.
+- README, presentation, and report accurately match the implementation.
