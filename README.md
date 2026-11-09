@@ -780,38 +780,61 @@ Results are reproducible and every reported number can be traced to logs.
 
 ## 18. Three Work Packages
 
-### Package A: Completed Implementation
+Based on git history: Package A is everything committed before 2026-11-08
+(the original scaffold); Package B is everything committed on 2026-11-08
+(this session); Package C is what is left.
 
-Implemented so far:
+### Package A: Initial Scaffold (committed 2026-10-28 – 2026-11-04)
 
+- Project structure, shared Pydantic schemas (`ScanRequest`, `ValidatedPlan`,
+  `Finding`, `ScanResponse`).
 - CLI, deterministic planner, LLM planner, and prompts.
 - Agent pipeline and MCP client.
-- MCP server tool interface and server pipeline.
+- MCP server tool interface and server pipeline (not yet wired to a working
+  policy guard).
 - Initial command builder, Nmap executor, and XML parser.
+- `policy_guard.py` was a stub that always raised `NotImplementedError`;
+  `reporter.py` and `audit.py` were empty; the lab had never been started;
+  `tests/`, `evaluation/cases.json`, and the `evaluation/*.py` scripts were
+  empty placeholders.
 
-These implementations still need the tests and integration verification owned by C.
+### Package B: Policy Guard, Reporter/Audit, Lab, Tests, Evaluation (committed 2026-11-08)
 
-### Package B: Remaining Non-Test Work
+- Policy configuration loading and the independent policy guard
+  (canonical-IPv4-only; rejects hostnames/CIDR/IPv6/IPv4-mapped-IPv6/
+  non-canonical numeric forms outright — design finalized, see
+  `docs/implementation-plan.md` §2 decision 11); denied requests verified to
+  never reach the Nmap executor.
+- `-T3` and executable lookup in the command builder; a concurrency limiter
+  in the server pipeline.
+- Deterministic report generation and JSONL audit logging (decision event
+  before Nmap starts, outcome event after).
+- The loopback port-scope lab (M1) and the M1b target-scope lab with
+  distinct container IPs, including fixing a Compose project-name collision
+  between the two.
+- A real end-to-end run against the lab, including fixing a genuine bug
+  where the MCP stdio server crashed on every launch.
+- The full unit/integration/end-to-end test suite (120 tests total).
+- Evaluation cases (`evaluation/cases.json`, supersedes an earlier `T1`–`T10`
+  draft — decision 12), the C1/C4 comparison and latency workflows, and
+  real exported results, summaries, and limitations in `docs/evaluation.md`
+  — including two real planner bugs found and fixed along the way (CIDR and
+  IPv4-mapped-IPv6 targets being silently truncated).
+- Setup verified from a clean environment (a separate `git clone`, macOS only).
 
-Own the remaining implementation and documentation work:
+### Package C: Remaining Work
 
-- Load and validate the server-controlled policy configuration.
-- Implement the independent policy guard and authorized `ValidatedPlan` creation.
-- Ensure denied requests cannot reach the Nmap executor.
-- Review and integrate the existing command builder, scanner, parser, and server pipeline with policy.
-- Implement deterministic reports and JSONL audit logging.
-- Finalize the approved/decoy Docker Compose lab and its setup and ground-truth documentation.
-
-### Package C: Tests and Evaluation
-
-Own verification and experimental work:
-
-- Unit, integration, and end-to-end tests for agent, policy, MCP, and scan components.
-- Start and validate the approved/decoy Docker lab; verify denied requests never invoke the executor.
-- Verify setup from a clean environment.
-- Finalize evaluation cases and expected outcomes.
-- Implement C1–C4 comparison and latency workflows.
-- Run tests and experiments; export reproducible raw data, summaries, and figures.
+- Implement and run C2 (agent with no policy guard) and C3 (prompt-only
+  guardrail) — both require a configured `OPENAI_API_KEY`/`OPENAI_MODEL`,
+  which this environment does not have.
+- Real prompt-injection testing against the LLM planner (only the
+  deterministic planner has been exercised so far, which is not evidence of
+  LLM behavior).
+- Policy-layer overhead and user-task-time metrics (the former depends on
+  C2; the latter on a human timing study).
+- Verify setup on Windows and/or Linux (only macOS has been verified).
+- Final report sections, slides, and any figures beyond what is already in
+  `docs/evaluation.md`.
 
 All contributors must agree on schemas and audit fields before parallel work.
 
