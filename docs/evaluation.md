@@ -404,3 +404,31 @@ the same authorized scan plan; report sample size, mean, and standard
 deviation; separate planner, policy, scan, and total time. Do not claim a
 guard is faster just because it rejected a request while another condition
 executed a scan.
+
+
+### Final End-to-End Verification — November 9, 2026
+
+The complete CLI-to-MCP scanning workflow was verified using
+the local authorized test target `127.0.0.1:8080`.
+
+| Planner | Request | Result | Nmap Started |
+|---|---|---|---|
+| Deterministic | Authorized port 8080 | Success, 8080/open | Yes |
+| Deterministic | Unauthorized port 9999 | Rejected | No |
+| LLM | Authorized port 8080 | Success, 8080/open | Yes |
+| LLM | Unauthorized port 9999 | Rejected | No |
+
+Both LLM tests used `--planner llm`, which disables the
+deterministic fallback.
+
+Audit log verification confirmed that authorized scans
+produced decision and outcome events, while rejected
+requests produced rejection decision events without
+starting Nmap.
+
+The system also demonstrated fail-closed behavior when
+the local policy configuration was initially unavailable.
+
+These results validate the tested end-to-end workflows,
+but do not establish universal security or reliability
+across all environments and inputs.
