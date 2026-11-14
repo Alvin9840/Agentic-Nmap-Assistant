@@ -22,6 +22,15 @@ from safe_nmap.shared.schemas import Port, ScanRequest
 class LLMUnavailableError(PlanningError):
     """Raised when the LLM planner cannot be configured or reached."""
 
+class PlanningRefusalError(PlanningError):
+    """The model answered with a well-formed result but left required fields null.
+
+    This is how a model declines (or asks to clarify) a request. It is kept
+    distinct from a plain ``PlanningError`` (empty or malformed output) so
+    evaluations can report refusals and planning failures separately.
+    """
+
+
 class PlannerOutput(BaseModel):
     """Nullable extraction result; null fields signal that clarification is needed."""
 
@@ -119,7 +128,9 @@ class LLMPlanner:
             missing_fields.append("profile")
         if missing_fields:
             fields = ", ".join(missing_fields)
-            raise PlanningError(f"Please clarify the following required fields: {fields}.")
+            raise PlanningRefusalError(
+                f"Please clarify the following required fields: {fields}."
+            )
 
         try:
             return ScanRequest(

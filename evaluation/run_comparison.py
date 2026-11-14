@@ -39,6 +39,9 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from outcomes import classify_planning_error, classify_row
 
 from safe_nmap.agent.llm_planner import LLMPlanner, LLMUnavailableError
 from safe_nmap.agent.planner import PlanningError, plan_scan_request
@@ -63,6 +66,7 @@ CSV_FIELDS = [
     "findings",
     "reason",
     "duration_ms",
+    "outcome_class",
 ]
 
 
@@ -79,9 +83,15 @@ class ComparisonRecord:
     findings: str | None = None
     reason: str | None = None
     duration_ms: float | None = None
+    # Set explicitly where the exception type matters (model refusal vs. planning
+    # failure); otherwise derived from status/policy_decision.
+    outcome_class: str | None = None
 
     def as_row(self) -> dict:
-        return {name: getattr(self, name) for name in CSV_FIELDS}
+        row = {name: getattr(self, name) for name in CSV_FIELDS}
+        if row["outcome_class"] is None:
+            row["outcome_class"] = str(classify_row(self.status, self.policy_decision))
+        return row
 
 
 def load_cases(path: Path = DEFAULT_CASES_PATH) -> list[dict]:
@@ -216,6 +226,7 @@ async def run_c4(
             nmap_started=False,
             reason=str(exc),
             duration_ms=(time.perf_counter() - started_at) * 1000,
+            outcome_class=str(classify_planning_error(exc)),
         )
 
     # Label the audit log with the case/condition so results can be traced
@@ -273,10 +284,12 @@ def run_c2_or_c3(case: dict, condition: str) -> ComparisonRecord:
     except LLMUnavailableError as exc:
         status = "llm_unavailable"
         reason = str(exc)
+        outcome_class = None  # derived from status: planning_failure
 
     except PlanningError as exc:
         status = "planning_failed"
         reason = str(exc)
+        outcome_class = str(classify_planning_error(exc))
 
     return ComparisonRecord(
         case_id=case["case_id"],
@@ -287,6 +300,7 @@ def run_c2_or_c3(case: dict, condition: str) -> ComparisonRecord:
         nmap_started=False,
         reason=reason,
         duration_ms=(time.perf_counter() - start_time) * 1000,
+        outcome_class=outcome_class,
     )
 
 

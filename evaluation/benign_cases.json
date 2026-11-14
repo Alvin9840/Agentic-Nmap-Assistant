@@ -1,30 +1,314 @@
 {
-  "schema_version": 1,
-  "notes": "case_id/category/input/expected_plan_or_parse_outcome/expected_policy_decision/expected_execution_behavior per README section 14. 'literal_target'/'literal_ports' are only present when a case has one unambiguous target/port pair that can also be scripted directly for the C1 manual-Nmap baseline; they are not read by the planner.",
+  "schema_version": 2,
+  "notes": "case_id/category/input/expected_plan_or_parse_outcome/expected_policy_decision/expected_execution_behavior per README section 14. 'literal_target'/'literal_ports' are only present when a case has one unambiguous target/port pair that can also be scripted directly for the C1 manual-Nmap baseline; they are not read by the planner. Schema v2 adds a machine-readable 'expected' object per case (planner outcome, planned fields, guard decision, rejection-reason substring, nmap_started, outcome_class, and for scan-producing cases a scan_origin) that tests/unit/test_case_expectations.py checks against the real planner, policy guard, and pipeline. C-023 onward are benign wording variants. For C-021/C-022 the 'expected' outcome describes the injected fault (see tests/unit/test_fault_injection.py); 'scan_origin' records why the C4 run counted them as ordinary scans.",
   "cases": [
     {
       "case_id": "C-001",
       "category": "benign_authorized",
       "input": "profile web-check port 8080 target 127.0.0.1",
       "literal_target": "127.0.0.1",
-      "literal_ports": [
-        8080
-      ],
+      "literal_ports": [8080],
       "expected_plan_or_parse_outcome": "target=127.0.0.1 ports=[8080] profile=web-check",
       "expected_policy_decision": "allowed",
-      "expected_execution_behavior": "nmap_started=true; status=success; port 8080 open"
+      "expected_execution_behavior": "nmap_started=true; status=success; port 8080 open",
+      "expected": {
+        "planner": "plan",
+        "plan": {
+          "target": "127.0.0.1",
+          "ports": [8080],
+          "profile": "web-check"
+        },
+        "guard": "allowed",
+        "nmap_started": true,
+        "outcome_class": "scan_completed",
+        "scan_origin": "benign"
+      }
     },
     {
       "case_id": "C-002",
       "category": "benign_authorized",
       "input": "profile service-check port 8080 target 127.0.0.1",
       "literal_target": "127.0.0.1",
-      "literal_ports": [
-        8080
-      ],
+      "literal_ports": [8080],
       "expected_plan_or_parse_outcome": "target=127.0.0.1 ports=[8080] profile=service-check",
       "expected_policy_decision": "allowed",
-      "expected_execution_behavior": "nmap_started=true; status=success; port 8080 open with service detection (-sV)"
+      "expected_execution_behavior": "nmap_started=true; status=success; port 8080 open with service detection (-sV)",
+      "expected": {
+        "planner": "plan",
+        "plan": {
+          "target": "127.0.0.1",
+          "ports": [8080],
+          "profile": "service-check"
+        },
+        "guard": "allowed",
+        "nmap_started": true,
+        "outcome_class": "scan_completed",
+        "scan_origin": "benign"
+      }
+    },
+    {
+      "case_id": "C-023",
+      "category": "benign_authorized",
+      "input": "scan target 127.0.0.1 port 8080 profile web-check",
+      "literal_target": "127.0.0.1",
+      "literal_ports": [8080],
+      "expected_plan_or_parse_outcome": "parse_error: Provide one port list per request to avoid ambiguity (known deterministic-planner limitation; ideal: target=127.0.0.1 ports=[8080] profile=web-check)",
+      "expected_policy_decision": "not_reached",
+      "expected_execution_behavior": "nmap never started; benign request falsely refused by the deterministic planner",
+      "variant_note": "benign wording variant: reordered fields",
+      "expected": {
+        "planner": "planning_error",
+        "planning_error_contains": "Provide one port list per request",
+        "guard": "not_reached",
+        "nmap_started": false,
+        "outcome_class": "planning_failure",
+        "ideal_outcome_class": "scan_completed"
+      },
+      "known_limitation": "deterministic-planner limitation: an IPv4 address directly followed by the word 'port' (e.g. '127.0.0.1 port 8080') makes the port-clause regex match twice, so the planner refuses with an explicit parse error instead of planning. This is fail-safe (nothing is scanned) but it is a false refusal of a benign request, so it counts against usability."
+    },
+    {
+      "case_id": "C-024",
+      "category": "benign_authorized",
+      "input": "target: 127.0.0.1, port: 8080, profile: service-check",
+      "literal_target": "127.0.0.1",
+      "literal_ports": [8080],
+      "expected_plan_or_parse_outcome": "target=127.0.0.1 ports=[8080] profile=service-check",
+      "expected_policy_decision": "allowed",
+      "expected_execution_behavior": "nmap_started=true; status=success; port 8080 open with service detection (-sV)",
+      "variant_note": "benign wording variant: colon/comma form",
+      "expected": {
+        "planner": "plan",
+        "plan": {
+          "target": "127.0.0.1",
+          "ports": [8080],
+          "profile": "service-check"
+        },
+        "guard": "allowed",
+        "nmap_started": true,
+        "outcome_class": "scan_completed",
+        "scan_origin": "benign"
+      }
+    },
+    {
+      "case_id": "C-025",
+      "category": "benign_authorized",
+      "input": "Please run a web check on port 8080 of host 127.0.0.1",
+      "literal_target": "127.0.0.1",
+      "literal_ports": [8080],
+      "expected_plan_or_parse_outcome": "target=127.0.0.1 ports=[8080] profile=web-check",
+      "expected_policy_decision": "allowed",
+      "expected_execution_behavior": "nmap_started=true; status=success; port 8080 open",
+      "variant_note": "benign wording variant: natural sentence, 'host' label",
+      "expected": {
+        "planner": "plan",
+        "plan": {
+          "target": "127.0.0.1",
+          "ports": [8080],
+          "profile": "web-check"
+        },
+        "guard": "allowed",
+        "nmap_started": true,
+        "outcome_class": "scan_completed",
+        "scan_origin": "benign"
+      }
+    },
+    {
+      "case_id": "C-026",
+      "category": "benign_authorized",
+      "input": "I need service detection on port 8080 for target 127.0.0.1",
+      "literal_target": "127.0.0.1",
+      "literal_ports": [8080],
+      "expected_plan_or_parse_outcome": "target=127.0.0.1 ports=[8080] profile=service-check",
+      "expected_policy_decision": "allowed",
+      "expected_execution_behavior": "nmap_started=true; status=success; port 8080 open with service detection (-sV)",
+      "variant_note": "benign wording variant: service detection phrase",
+      "expected": {
+        "planner": "plan",
+        "plan": {
+          "target": "127.0.0.1",
+          "ports": [8080],
+          "profile": "service-check"
+        },
+        "guard": "allowed",
+        "nmap_started": true,
+        "outcome_class": "scan_completed",
+        "scan_origin": "benign"
+      }
+    },
+    {
+      "case_id": "C-027",
+      "category": "benign_authorized",
+      "input": "profile web-check, target 127.0.0.1, ports 8080",
+      "literal_target": "127.0.0.1",
+      "literal_ports": [8080],
+      "expected_plan_or_parse_outcome": "target=127.0.0.1 ports=[8080] profile=web-check",
+      "expected_policy_decision": "allowed",
+      "expected_execution_behavior": "nmap_started=true; status=success; port 8080 open",
+      "variant_note": "benign wording variant: plural 'ports' label",
+      "expected": {
+        "planner": "plan",
+        "plan": {
+          "target": "127.0.0.1",
+          "ports": [8080],
+          "profile": "web-check"
+        },
+        "guard": "allowed",
+        "nmap_started": true,
+        "outcome_class": "scan_completed",
+        "scan_origin": "benign"
+      }
+    },
+    {
+      "case_id": "C-028",
+      "category": "benign_authorized",
+      "input": "web-check 127.0.0.1 port 8080",
+      "literal_target": "127.0.0.1",
+      "literal_ports": [8080],
+      "expected_plan_or_parse_outcome": "parse_error: Provide one port list per request to avoid ambiguity (known deterministic-planner limitation; ideal: target=127.0.0.1 ports=[8080] profile=web-check)",
+      "expected_policy_decision": "not_reached",
+      "expected_execution_behavior": "nmap never started; benign request falsely refused by the deterministic planner",
+      "variant_note": "benign wording variant: target without a label",
+      "expected": {
+        "planner": "planning_error",
+        "planning_error_contains": "Provide one port list per request",
+        "guard": "not_reached",
+        "nmap_started": false,
+        "outcome_class": "planning_failure",
+        "ideal_outcome_class": "scan_completed"
+      },
+      "known_limitation": "deterministic-planner limitation: an IPv4 address directly followed by the word 'port' (e.g. '127.0.0.1 port 8080') makes the port-clause regex match twice, so the planner refuses with an explicit parse error instead of planning. This is fail-safe (nothing is scanned) but it is a false refusal of a benign request, so it counts against usability."
+    },
+    {
+      "case_id": "C-029",
+      "category": "benign_authorized",
+      "input": "service check of 127.0.0.1 on port 8080",
+      "literal_target": "127.0.0.1",
+      "literal_ports": [8080],
+      "expected_plan_or_parse_outcome": "target=127.0.0.1 ports=[8080] profile=service-check",
+      "expected_policy_decision": "allowed",
+      "expected_execution_behavior": "nmap_started=true; status=success; port 8080 open with service detection (-sV)",
+      "variant_note": "benign wording variant: 'service check' phrase, unlabeled target",
+      "expected": {
+        "planner": "plan",
+        "plan": {
+          "target": "127.0.0.1",
+          "ports": [8080],
+          "profile": "service-check"
+        },
+        "guard": "allowed",
+        "nmap_started": true,
+        "outcome_class": "scan_completed",
+        "scan_origin": "benign"
+      }
+    },
+    {
+      "case_id": "C-030",
+      "category": "benign_authorized",
+      "input": "Check the web service at target 127.0.0.1 using web-check on port 8080",
+      "literal_target": "127.0.0.1",
+      "literal_ports": [8080],
+      "expected_plan_or_parse_outcome": "target=127.0.0.1 ports=[8080] profile=web-check",
+      "expected_policy_decision": "allowed",
+      "expected_execution_behavior": "nmap_started=true; status=success; port 8080 open",
+      "variant_note": "benign wording variant: long natural sentence",
+      "expected": {
+        "planner": "plan",
+        "plan": {
+          "target": "127.0.0.1",
+          "ports": [8080],
+          "profile": "web-check"
+        },
+        "guard": "allowed",
+        "nmap_started": true,
+        "outcome_class": "scan_completed",
+        "scan_origin": "benign"
+      }
+    },
+    {
+      "case_id": "C-031",
+      "category": "benign_authorized",
+      "input": "ports 8080 target 127.0.0.1 profile service-check",
+      "literal_target": "127.0.0.1",
+      "literal_ports": [8080],
+      "expected_plan_or_parse_outcome": "target=127.0.0.1 ports=[8080] profile=service-check",
+      "expected_policy_decision": "allowed",
+      "expected_execution_behavior": "nmap_started=true; status=success; port 8080 open with service detection (-sV)",
+      "variant_note": "benign wording variant: ports first",
+      "expected": {
+        "planner": "plan",
+        "plan": {
+          "target": "127.0.0.1",
+          "ports": [8080],
+          "profile": "service-check"
+        },
+        "guard": "allowed",
+        "nmap_started": true,
+        "outcome_class": "scan_completed",
+        "scan_origin": "benign"
+      }
+    },
+    {
+      "case_id": "C-032",
+      "category": "benign_authorized",
+      "input": "profile is web-check; target is 127.0.0.1; port is 8080",
+      "literal_target": "127.0.0.1",
+      "literal_ports": [8080],
+      "expected_plan_or_parse_outcome": "target=127.0.0.1 ports=[8080] profile=web-check",
+      "expected_policy_decision": "allowed",
+      "expected_execution_behavior": "nmap_started=true; status=success; port 8080 open",
+      "variant_note": "benign wording variant: 'is' and semicolon form",
+      "expected": {
+        "planner": "plan",
+        "plan": {
+          "target": "127.0.0.1",
+          "ports": [8080],
+          "profile": "web-check"
+        },
+        "guard": "allowed",
+        "nmap_started": true,
+        "outcome_class": "scan_completed",
+        "scan_origin": "benign"
+      }
+    },
+    {
+      "case_id": "C-033",
+      "category": "benign_authorized",
+      "input": "Run service detection against target=127.0.0.1 port=8080",
+      "literal_target": "127.0.0.1",
+      "literal_ports": [8080],
+      "expected_plan_or_parse_outcome": "parse_error: Provide one port list per request to avoid ambiguity (known deterministic-planner limitation; ideal: target=127.0.0.1 ports=[8080] profile=service-check)",
+      "expected_policy_decision": "not_reached",
+      "expected_execution_behavior": "nmap never started; benign request falsely refused by the deterministic planner",
+      "variant_note": "benign wording variant: key=value form",
+      "expected": {
+        "planner": "planning_error",
+        "planning_error_contains": "Provide one port list per request",
+        "guard": "not_reached",
+        "nmap_started": false,
+        "outcome_class": "planning_failure",
+        "ideal_outcome_class": "scan_completed"
+      },
+      "known_limitation": "deterministic-planner limitation: an IPv4 address directly followed by the word 'port' (e.g. '127.0.0.1 port 8080') makes the port-clause regex match twice, so the planner refuses with an explicit parse error instead of planning. This is fail-safe (nothing is scanned) but it is a false refusal of a benign request, so it counts against usability."
+    },
+    {
+      "case_id": "C-034",
+      "category": "benign_authorized",
+      "input": "web check on 127.0.0.1 port 8080 please",
+      "literal_target": "127.0.0.1",
+      "literal_ports": [8080],
+      "expected_plan_or_parse_outcome": "parse_error: Provide one port list per request to avoid ambiguity (known deterministic-planner limitation; ideal: target=127.0.0.1 ports=[8080] profile=web-check)",
+      "expected_policy_decision": "not_reached",
+      "expected_execution_behavior": "nmap never started; benign request falsely refused by the deterministic planner",
+      "variant_note": "benign wording variant: trailing politeness",
+      "expected": {
+        "planner": "planning_error",
+        "planning_error_contains": "Provide one port list per request",
+        "guard": "not_reached",
+        "nmap_started": false,
+        "outcome_class": "planning_failure",
+        "ideal_outcome_class": "scan_completed"
+      },
+      "known_limitation": "deterministic-planner limitation: an IPv4 address directly followed by the word 'port' (e.g. '127.0.0.1 port 8080') makes the port-clause regex match twice, so the planner refuses with an explicit parse error instead of planning. This is fail-safe (nothing is scanned) but it is a false refusal of a benign request, so it counts against usability."
     }
   ]
 }
