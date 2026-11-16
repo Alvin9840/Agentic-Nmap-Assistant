@@ -316,6 +316,10 @@ async def run_all(
 
     records: list[ComparisonRecord] = []
     for case in cases:
+        print(
+            f"Running case {case['case_id']}...",
+            flush=True,
+        )
         if "C1" in conditions:
             records.append(await run_c1(case))
         if "C2" in conditions:
